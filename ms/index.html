@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>网易云风格音乐播放器（修复暂停逻辑）</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/howler@2.2.3/dist/howler.min.js"></script>
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .vinyl-spin {
+            animation: spin 20s linear infinite;
+            animation-play-state: paused;
+        }
+        .vinyl-spin.playing {
+            animation-play-state: running;
+        }
+        .progress-bar {
+            background: linear-gradient(to right, #ff4e4e var(--progress), #e0e0e0 var(--progress));
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: #e0e0e0;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+        }
+        input[type="range"]:hover {
+            opacity: 1;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            background: #ff4e4e;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 12px;
+            height: 12px;
+            background: #ff4e4e;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        .lyrics-fade-in {
+            opacity: 0;
+            animation: fadeIn 2s ease-in-out forwards;
+        }
+        @keyframes fadeIn {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div x-data="player()" 
+         x-init="init()" 
+         class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+        <div class="flex items-center mb-6">
+            <div class="relative w-24 h-24 mr-4">
+                <img :src="currentSong.cover" alt="专辑封面" 
+                     class="w-full h-full object-cover rounded-lg shadow">
+                <div class="absolute inset-0 bg-black opacity-20 rounded-lg"></div>
+                <div class="absolute inset-0 vinyl-spin" :class="{ 'playing': isPlaying }">
+                    <div class="w-full h-full rounded-full border-4 border-white opacity-60"></div>
+                </div>
+            </div>
+            <div class="flex-1">
+                <h2 x-text="currentSong.title" class="text-xl font-bold text-gray-800 mb-1"></h2>
+                <p x-text="currentSong.artist" class="text-sm text-gray-600"></p>
+            </div>
+        </div>
+        
+        <div class="mb-4">
+            <div class="relative h-1 bg-gray-200 rounded-full overflow-hidden">
+                <div class="progress-bar absolute top-0 left-0 h-full rounded-full transition-all duration-300 ease-in-out"
+                     :style="`--progress: ${progress}%`"></div>
+                <input type="range" class="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer"
+                       min="0" :max="duration" :value="currentTime" @input="seek" step="0.1">
+            </div>
+            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                <span x-text="formatTime(currentTime)"></span>
+                <span x-text="formatTime(duration)"></span>
+            </div>
+        </div>
+        
+        <div class="flex justify-between items-center mb-6">
+            <button @click="prevSong" class="text-gray-600 hover:text-red-500 transition-colors focus:outline-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                </svg>
+            </button>
+            <button @click="togglePlay" class="bg-red-500 text-white rounded-full p-3 hover:bg-red-600 transition-colors focus:outline-none">
+                <svg x-show="!isPlaying" xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                </svg>
+                <svg x-show="isPlaying" xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </button>
+            <button @click="nextSong" class="text-gray-600 hover:text-red-500 transition-colors focus:outline-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                </svg>
+            </button>
+        </div>
+        
+        <div class="flex items-center space-x-2 mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15.536a5 5 0 001.414 1.414m0 0l-2.828 2.828" />
+            </svg>
+            <input type="range" min="0" max="1" step="0.01" x-model="volume" @input="setVolume" 
+                   class="w-full">
+        </div>
+
+        <!-- 歌词组件 -->
+        <div x-show="isPlaying" x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 transform translate-y-4"
+             x-transition:enter-end="opacity-100 transform translate-y-0"
+             class="mt-6 p-4 bg-gradient-to-r from-red-100 to-red-200 rounded-lg shadow-inner">
+            <p x-text="currentLyric" class="text-gray-800 text-sm italic lyrics-fade-in"></p>
+        </div>
+    </div>
+
+    <script>
+        function player() {
+            return {
+                playlist: [
+                    { title: '你瞒我瞒', artist: '陈柏宇 (Jason Chan)', src: 'https://lv-sycdn.kuwo.cn/1a0ae6161b0ed6443316f4ddcad3467a/671f39aa/resource/30106/trackmedia/M500004aL2Yx0Nzfq4.mp3?bitrate$128&from=vip', cover: 'https://img4.kuwo.cn/star/albumcover/500/2/53/774143786.jpg', lrc: '[00:00.0]你瞒我瞒 - 陈柏宇 (Jason Chan)\n[00:06.45]词：林夕\n[00:12.91]曲：陈光荣\n[00:19.36]约会像是为分享到饱肚滋味\n[00:25.56]有任何难题却不提起\n[00:32.09]这若是浪漫\n[00:34.23]我怎么觉得就快分离\n[00:38.32]你哭过 但眼影闪得更艳美\n[00:44.65]我是谁情人 你始终也是你\n[00:50.75]微笑静默互望 笑比哭更可悲\n[00:57.19]就算怎开心皱着眉\n[01:00.72]尽管紧紧抱得稳你\n[01:04.21]两臂 却分得开我共你\n[01:09.56]无言的亲亲亲 侵袭我心\n[01:15.92]仍宁愿亲口讲你累得很\n[01:22.39]如除我以外在你心\n[01:26.36]还多出一个人 你瞒住我\n[01:31.44]我亦瞒住我太合衬\n[01:47.85]这就是谈情 客气得吓着我\n[01:53.8]除了近来繁忙我所知有几多\n[02:00.5]若要哭不哭诉为何\n[02:03.86]大家争吵斗嘴好过\n[02:07.37]胜过 笑不出声抱着我\n[02:13.01]无言的亲亲亲 侵袭我心\n[02:19.22]仍宁愿亲口讲你累得很\n[02:25.51]如除我以外在你心\n[02:29.36]还多出一个人 你瞒住我\n[02:34.65]我亦瞒住我太合衬\n[02:52.64]这么寂寞的恋爱算什么\n[02:57.51]用利指尖缠我 用热吻逃避我\n[03:05.25]无言的亲亲亲 侵袭我心\n[03:11.45]仍宁愿亲口讲你累得很\n[03:17.82]如除我以外在你心\n[03:21.48]还多出一个人 你瞒住我\n[03:26.63]我亦瞒住我太合衬' }
+                ],
+                currentSongIndex: 0,
+                isPlaying: false,
+                progress: 0,
+                currentTime: 0,
+                duration: 0,
+                volume: 1,
+                player: null,
+                currentLyric: '',
+                lyrics: [],
+                animationFrame: null,
+
+                get currentSong() {
+                    return this.playlist[this.currentSongIndex];
+                },
+
+                init() {
+                    this.loadSong(); // 修改：在 init 方法中调用 loadSong
+                },
+
+                loadSong() {
+                    if (this.player) {
+                        this.player.unload();
+                    }
+                    this.player = new Howl({
+                        src: [this.currentSong.src],
+                        html5: true,
+                        volume: this.volume,
+                        onplay: () => {
+                            this.isPlaying = true;
+                            this.updateProgress();
+                            this.parseLyrics();
+                        },
+                        onpause: () => {
+                            this.isPlaying = false;
+                            cancelAnimationFrame(this.animationFrame);
+                        },
+                        onend: () => {
+                            this.nextSong();
+                        },
+                        onload: () => {
+                            this.duration = this.player.duration();
+                        } 
+                    });
+                    // Reset progress and current time when loading a new song
+                    this.progress = 0;
+                    this.currentTime = 0;
+                },
+
+                togglePlay() {
+                    if (this.player.playing()) {
+                        this.player.pause();
+                    } else {
+                        this.player.play();
+                    }
+                },
+
+                prevSong() {
+                    this.currentSongIndex = (this.currentSongIndex - 1 + this.playlist.length) % this.playlist.length;
+                    this.loadSong();
+                    this.player.play();
+                    this.isPlaying = true;
+                },
+
+                nextSong() {
+                    this.currentSongIndex = (this.currentSongIndex + 1) % this.playlist.length;
+                    this.loadSong();
+                    this.player.play();
+                    this.isPlaying = true;
+                },
+
+                updateProgress() {
+                    if (this.player.playing()) {
+                        this.currentTime = this.player.seek();
+                        this.progress = (this.currentTime / this.duration) * 100;
+                        this.updateLyrics();
+                        this.animationFrame = requestAnimationFrame(this.updateProgress.bind(this));
+                    }
+                },
+
+                seek(event) {
+                    const seekTime = parseFloat(event.target.value);
+                    this.player.seek(seekTime);
+                    this.currentTime = seekTime;
+                    this.progress = (seekTime / this.duration) * 100;
+                },
+
+                setVolume() {
+                    this.player.volume(this.volume);
+                },
+
+                formatTime(seconds) {
+                    const minutes = Math.floor(seconds / 60);
+                    const remainingSeconds = Math.floor(seconds % 60);
+                    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+                },
+
+                parseLyrics() {
+                    this.lyrics = [];
+                    const lines = this.currentSong.lrc.split('\n');
+                    lines.forEach(line => {
+                        const timeMatch = line.match(/\[(\d{2}):(\d{2})\.(\d{2})\](.*)/);
+                        if (timeMatch) {
+                            const minutes = parseInt(timeMatch[1], 10);
+                            const seconds = parseInt(timeMatch[2], 10);
+                            const milliseconds = parseInt(timeMatch[3], 10) / 1000; // 修改：除以 1000 而不是 100
+                            const time = minutes * 60 + seconds + milliseconds;
+                            const text = timeMatch[4].trim();
+                            this.lyrics.push({ time, text });
+                        }
+                    });
+                    this.lyrics.sort((a, b) => a.time - b.time);
+                },
+
+                updateLyrics() {
+                    const currentTime = this.player.seek();
+                    let found = false;
+                    for (let i = 0; i < this.lyrics.length; i++) {
+                        if (currentTime < this.lyrics[i].time) {
+                            if (i > 0) { // 修改：检查 i 是否大于 0
+                                this.currentLyric = this.lyrics[i - 1].text;
+                            } else {
+                                this.currentLyric = '';
+                            }
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found && this.lyrics.length > 0) {
+                        this.currentLyric = this.lyrics[this.lyrics.length - 1].text;
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
