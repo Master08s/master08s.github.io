@@ -4,7 +4,7 @@
 // @description  每天iKuuu机场自动签到领流量，必须使用脚本猫，请勿使用油猴
 // @author       Master (修复优化)
 // @icon         https://ikuuu.pw/favicon.ico
-// @crontab      * * once * *
+// @crontab      0 3 * * *
 // @grant        GM_xmlhttpRequest
 // @grant        GM_log
 // @grant        GM_notification
