@@ -174,6 +174,75 @@ function destroy_system() {
 # 安装Docker
 function install_docker() {
     echo -e "\033[1;34m正在安装Docker...\033[0m"
+
+    # 选择服务器位置
+    echo -e "\033[1;34m请选择服务器位置：\033[0m"
+    echo "1. 国内"
+    echo "2. 海外"
+    read -p "请选择并输入服务器位置 [ 1-2 ]：" server_location_choice
+
+    case $server_location_choice in
+        1)
+            SERVER_LOCATION="国内"
+            DOCKER_INSTALL_URL="https://get.daocloud.io/docker"
+            DOCKER_COMPOSE_URL="https://get.daocloud.io/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)"
+            ;;
+        2)
+            SERVER_LOCATION="海外"
+            DOCKER_INSTALL_URL="https://get.docker.com"
+            DOCKER_COMPOSE_URL="https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)"
+            ;;
+        *)
+            echo -e "\033[1;31m无效选择，请重新选择。\033[0m"
+            install_docker
+            return
+            ;;
+    esac
+
+    # 显示可用的 Docker 版本
+    echo -e "\033[1;34m请选择要安装的 Docker 版本：\033[0m"
+    echo "1. 最新稳定版 (latest)"
+    echo "2. 24.0.x"
+    echo "3. 23.0.x"
+    echo "4. 22.0.x"
+    echo "5. 20.10.x"
+    echo "6. 19.03.x"
+    echo "7. 18.09.x"
+    echo "8. 17.06.x"
+    read -p "请选择并输入你想安装的 Docker 版本 [ 1-8 ]：" docker_version_choice
+
+    case $docker_version_choice in
+        1)
+            DOCKER_VERSION="latest"
+            ;;
+        2)
+            DOCKER_VERSION="24.0"
+            ;;
+        3)
+            DOCKER_VERSION="23.0"
+            ;;
+        4)
+            DOCKER_VERSION="22.0"
+            ;;
+        5)
+            DOCKER_VERSION="20.10"
+            ;;
+        6)
+            DOCKER_VERSION="19.03"
+            ;;
+        7)
+            DOCKER_VERSION="18.09"
+            ;;
+        8)
+            DOCKER_VERSION="17.06"
+            ;;
+        *)
+            echo -e "\033[1;31m无效选择，请重新选择。\033[0m"
+            install_docker
+            return
+            ;;
+    esac
+
     # 卸载旧版本
     if [ "$OS" == "ubuntu" ] || [ "$OS" == "debian" ]; then
         sudo apt-get remove -y docker docker-engine docker.io containerd runc
@@ -186,7 +255,7 @@ function install_docker() {
         sudo apt-get update
         sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
     elif [ "$OS" == "centos" ]; then
-        sudo yum install -y yum-utils
+        sudo yum install -y yum-utils device-mapper-persistent-data lvm2
     fi
 
     # 添加Docker官方GPG密钥
@@ -201,14 +270,22 @@ function install_docker() {
         echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/$OS $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
         sudo apt-get update
     elif [ "$OS" == "centos" ]; then
-        sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+        sudo yum-config-manager --add-repo https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
     fi
 
-    # 安装Docker
-    if [ "$OS" == "ubuntu" ] || [ "$OS" == "debian" ]; then
-        sudo apt-get install -y docker-ce docker-ce-cli containerd.io
-    elif [ "$OS" == "centos" ]; then
-        sudo yum install -y docker-ce docker-ce-cli containerd.io
+    # 安装指定版本的Docker
+    if [ "$DOCKER_VERSION" == "latest" ]; then
+        if [ "$OS" == "ubuntu" ] || [ "$OS" == "debian" ]; then
+            sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+        elif [ "$OS" == "centos" ]; then
+            sudo yum install -y docker-ce docker-ce-cli containerd.io
+        fi
+    else
+        if [ "$OS" == "ubuntu" ] || [ "$OS" == "debian" ]; then
+            sudo apt-get install -y docker-ce=$(apt-cache madison docker-ce | grep $DOCKER_VERSION | head -1 | awk '{print $3}') docker-ce-cli=$(apt-cache madison docker-ce-cli | grep $DOCKER_VERSION | head -1 | awk '{print $3}') containerd.io
+        elif [ "$OS" == "centos" ]; then
+            sudo yum install -y docker-ce-$DOCKER_VERSION docker-ce-cli-$DOCKER_VERSION containerd.io
+        fi
     fi
 
     # 启动并设置Docker开机自启
@@ -216,138 +293,139 @@ function install_docker() {
     sudo systemctl enable docker
 
     # 安装Docker Compose
-    sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    sudo curl -L "$DOCKER_COMPOSE_URL" -o /usr/local/bin/docker-compose
     sudo chmod +x /usr/local/bin/docker-compose
-# 配置Docker镜像加速器
-echo -e "\033[1;34m请选择Docker镜像加速器：\033[0m"
-echo "1. Docker Proxy（推荐）"
-echo "2. 道客 DaoCloud"
-echo "3. AtomHub 可信镜像中心"
-echo "4. 阿里云（杭州）"
-echo "5. 阿里云（上海）"
-echo "6. 阿里云（青岛）"
-echo "7. 阿里云（北京）"
-echo "8. 阿里云（张家口）"
-echo "9. 阿里云（呼和浩特）"
-echo "10. 阿里云（乌兰察布）"
-echo "11. 阿里云（深圳）"
-echo "12. 阿里云（河源）"
-echo "13. 阿里云（广州）"
-echo "14. 阿里云（成都）"
-echo "15. 阿里云（香港）"
-echo "16. 阿里云（日本-东京）"
-echo "17. 阿里云（新加坡）"
-echo "18. 阿里云（澳大利亚-悉尼）"
-echo "19. 阿里云（马来西亚-吉隆坡）"
-echo "20. 阿里云（印度尼西亚-雅加达）"
-echo "21. 阿里云（印度-孟买）"
-echo "22. 阿里云（德国-法兰克福）"
-echo "23. 阿里云（英国-伦敦）"
-echo "24. 阿里云（美国西部-硅谷）"
-echo "25. 阿里云（美国东部-弗吉尼亚）"
-echo "26. 阿里云（阿联酋-迪拜）"
-echo "27. 腾讯云"
-echo "28. 谷歌云"
-echo "29. 官方 Docker Hub"
-read -p "请选择并输入你想使用的 Docker Registry 源 [ 1-29 ]：" docker_registry_choice
 
-case $docker_registry_choice in
-    1)
-        DOCKER_REGISTRY="https://dockerproxy.com"
-        ;;
-    2)
-        DOCKER_REGISTRY="https://f1361db2.m.daocloud.io"
-        ;;
-    3)
-        DOCKER_REGISTRY="https://hub.atomcloud.io"
-        ;;
-    4)
-        DOCKER_REGISTRY="https://registry.cn-hangzhou.aliyuncs.com"
-        ;;
-    5)
-        DOCKER_REGISTRY="https://registry.cn-shanghai.aliyuncs.com"
-        ;;
-    6)
-        DOCKER_REGISTRY="https://registry.cn-qingdao.aliyuncs.com"
-        ;;
-    7)
-        DOCKER_REGISTRY="https://registry.cn-beijing.aliyuncs.com"
-        ;;
-    8)
-        DOCKER_REGISTRY="https://registry.cn-zhangjiakou.aliyuncs.com"
-        ;;
-    9)
-        DOCKER_REGISTRY="https://registry.cn-huhehaote.aliyuncs.com"
-        ;;
-    10)
-        DOCKER_REGISTRY="https://registry.cn-wulanchabu.aliyuncs.com"
-        ;;
-    11)
-        DOCKER_REGISTRY="https://registry.cn-shenzhen.aliyuncs.com"
-        ;;
-    12)
-        DOCKER_REGISTRY="https://registry.cn-heyuan.aliyuncs.com"
-        ;;
-    13)
-        DOCKER_REGISTRY="https://registry.cn-guangzhou.aliyuncs.com"
-        ;;
-    14)
-        DOCKER_REGISTRY="https://registry.cn-chengdu.aliyuncs.com"
-        ;;
-    15)
-        DOCKER_REGISTRY="https://registry.cn-hongkong.aliyuncs.com"
-        ;;
-    16)
-        DOCKER_REGISTRY="https://registry.ap-northeast-1.aliyuncs.com"
-        ;;
-    17)
-        DOCKER_REGISTRY="https://registry.ap-southeast-1.aliyuncs.com"
-        ;;
-    18)
-        DOCKER_REGISTRY="https://registry.ap-southeast-2.aliyuncs.com"
-        ;;
-    19)
-        DOCKER_REGISTRY="https://registry.ap-southeast-3.aliyuncs.com"
-        ;;
-    20)
-        DOCKER_REGISTRY="https://registry.ap-southeast-5.aliyuncs.com"
-        ;;
-    21)
-        DOCKER_REGISTRY="https://registry.ap-south-1.aliyuncs.com"
-        ;;
-    22)
-        DOCKER_REGISTRY="https://registry.eu-central-1.aliyuncs.com"
-        ;;
-    23)
-        DOCKER_REGISTRY="https://registry.eu-west-1.aliyuncs.com"
-        ;;
-    24)
-        DOCKER_REGISTRY="https://registry.us-west-1.aliyuncs.com"
-        ;;
-    25)
-        DOCKER_REGISTRY="https://registry.us-east-1.aliyuncs.com"
-        ;;
-    26)
-        DOCKER_REGISTRY="https://registry.me-east-1.aliyuncs.com"
-        ;;
-    27)
-        DOCKER_REGISTRY="https://registry.ap-east-1.aliyuncs.com"
-        ;;
-    28)
-        DOCKER_REGISTRY="https://mirror.ccs.tencentyun.com"
-        ;;
-    29)
-        DOCKER_REGISTRY="https://mirror.gcr.io"
-        ;;
-    30)
-        DOCKER_REGISTRY="https://registry.docker.io"
-        ;;
-    *)
-        echo -e "\033[1;31m无效选择，请重新选择。\033[0m"
-        install_docker
-        return
-        ;;
-esac
+    # 配置Docker镜像加速器
+    echo -e "\033[1;34m请选择Docker镜像加速器：\033[0m"
+    echo "1. Docker Proxy（推荐）"
+    echo "2. 道客 DaoCloud"
+    echo "3. AtomHub 可信镜像中心"
+    echo "4. 阿里云（杭州）"
+    echo "5. 阿里云（上海）"
+    echo "6. 阿里云（青岛）"
+    echo "7. 阿里云（北京）"
+    echo "8. 阿里云（张家口）"
+    echo "9. 阿里云（呼和浩特）"
+    echo "10. 阿里云（乌兰察布）"
+    echo "11. 阿里云（深圳）"
+    echo "12. 阿里云（河源）"
+    echo "13. 阿里云（广州）"
+    echo "14. 阿里云（成都）"
+    echo "15. 阿里云（香港）"
+    echo "16. 阿里云（日本-东京）"
+    echo "17. 阿里云（新加坡）"
+    echo "18. 阿里云（澳大利亚-悉尼）"
+    echo "19. 阿里云（马来西亚-吉隆坡）"
+    echo "20. 阿里云（印度尼西亚-雅加达）"
+    echo "21. 阿里云（印度-孟买）"
+    echo "22. 阿里云（德国-法兰克福）"
+    echo "23. 阿里云（英国-伦敦）"
+    echo "24. 阿里云（美国西部-硅谷）"
+    echo "25. 阿里云（美国东部-弗吉尼亚）"
+    echo "26. 阿里云（阿联酋-迪拜）"
+    echo "27. 腾讯云"
+    echo "28. 谷歌云"
+    echo "29. 官方 Docker Hub"
+    read -p "请选择并输入你想使用的 Docker Registry 源 [ 1-29 ]：" docker_registry_choice
+
+    case $docker_registry_choice in
+        1)
+            DOCKER_REGISTRY="https://dockerproxy.com"
+            ;;
+        2)
+            DOCKER_REGISTRY="https://f1361db2.m.daocloud.io"
+            ;;
+        3)
+            DOCKER_REGISTRY="https://hub.atomcloud.io"
+            ;;
+        4)
+            DOCKER_REGISTRY="https://registry.cn-hangzhou.aliyuncs.com"
+            ;;
+        5)
+            DOCKER_REGISTRY="https://registry.cn-shanghai.aliyuncs.com"
+            ;;
+        6)
+            DOCKER_REGISTRY="https://registry.cn-qingdao.aliyuncs.com"
+            ;;
+        7)
+            DOCKER_REGISTRY="https://registry.cn-beijing.aliyuncs.com"
+            ;;
+        8)
+            DOCKER_REGISTRY="https://registry.cn-zhangjiakou.aliyuncs.com"
+            ;;
+        9)
+            DOCKER_REGISTRY="https://registry.cn-huhehaote.aliyuncs.com"
+            ;;
+        10)
+            DOCKER_REGISTRY="https://registry.cn-wulanchabu.aliyuncs.com"
+            ;;
+        11)
+            DOCKER_REGISTRY="https://registry.cn-shenzhen.aliyuncs.com"
+            ;;
+        12)
+            DOCKER_REGISTRY="https://registry.cn-heyuan.aliyuncs.com"
+            ;;
+        13)
+            DOCKER_REGISTRY="https://registry.cn-guangzhou.aliyuncs.com"
+            ;;
+        14)
+            DOCKER_REGISTRY="https://registry.cn-chengdu.aliyuncs.com"
+            ;;
+        15)
+            DOCKER_REGISTRY="https://registry.cn-hongkong.aliyuncs.com"
+            ;;
+        16)
+            DOCKER_REGISTRY="https://registry.ap-northeast-1.aliyuncs.com"
+            ;;
+        17)
+            DOCKER_REGISTRY="https://registry.ap-southeast-1.aliyuncs.com"
+            ;;
+        18)
+            DOCKER_REGISTRY="https://registry.ap-southeast-2.aliyuncs.com"
+            ;;
+        19)
+            DOCKER_REGISTRY="https://registry.ap-southeast-3.aliyuncs.com"
+            ;;
+        20)
+            DOCKER_REGISTRY="https://registry.ap-southeast-5.aliyuncs.com"
+            ;;
+        21)
+            DOCKER_REGISTRY="https://registry.ap-south-1.aliyuncs.com"
+            ;;
+        22)
+            DOCKER_REGISTRY="https://registry.eu-central-1.aliyuncs.com"
+            ;;
+        23)
+            DOCKER_REGISTRY="https://registry.eu-west-1.aliyuncs.com"
+            ;;
+        24)
+            DOCKER_REGISTRY="https://registry.us-west-1.aliyuncs.com"
+            ;;
+        25)
+            DOCKER_REGISTRY="https://registry.us-east-1.aliyuncs.com"
+            ;;
+        26)
+            DOCKER_REGISTRY="https://registry.me-east-1.aliyuncs.com"
+            ;;
+        27)
+            DOCKER_REGISTRY="https://registry.ap-east-1.aliyuncs.com"
+            ;;
+        28)
+            DOCKER_REGISTRY="https://mirror.ccs.tencentyun.com"
+            ;;
+        29)
+            DOCKER_REGISTRY="https://mirror.gcr.io"
+            ;;
+        30)
+            DOCKER_REGISTRY="https://registry.docker.io"
+            ;;
+        *)
+            echo -e "\033[1;31m无效选择，请重新选择。\033[0m"
+            install_docker
+            return
+            ;;
+    esac
 
     # 配置Docker镜像加速器
     sudo mkdir -p /etc/docker
@@ -362,6 +440,81 @@ EOF
     echo -e "\033[1;32mDocker安装完成，并已配置镜像加速器。\033[0m"
     sleep 2
     main_menu
+}
+
+function uninstall_docker() {
+    echo -e "\033[1;31m警告：此操作将卸载并删除Docker及其所有数据。\033[0m"
+    echo -e "\033[1;31m请确保您已备份重要数据，并且您确实想要执行此操作。\033[0m"
+    read -p "是否继续？(y/n): " confirm
+    if [ "$confirm" == "y" ]; then
+        echo -e "\033[1;31m正在卸载Docker...\033[0m"
+
+        # 停止所有运行的容器
+        sudo docker stop $(docker ps -aq)
+
+        # 删除所有容器
+        sudo docker rm $(docker ps -aq)
+
+        # 删除所有镜像
+        sudo docker rmi $(docker images -q)
+
+        # 卸载 Docker 引擎
+        if [ "$OS" == "ubuntu" ] || [ "$OS" == "debian" ]; then
+            sudo apt-get purge -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+        elif [ "$OS" == "centos" ]; then
+            sudo yum remove -y docker \
+                              docker-client \
+                              docker-client-latest \
+                              docker-common \
+                              docker-latest \
+                              docker-latest-logrotate \
+                              docker-logrotate \
+                              docker-engine
+        fi
+
+        # 删除 Docker 数据目录
+        sudo rm -rf /var/lib/docker
+        sudo rm -rf /var/lib/containerd
+
+        # 删除 Docker 配置文件
+        sudo rm -rf /etc/docker
+        sudo rm -rf /etc/systemd/system/docker.service.d
+        sudo rm -rf /usr/local/bin/docker-compose
+        sudo rm -rf /usr/bin/docker-compose
+        sudo rm -rf ~/.docker
+
+        # 清理残留的依赖包
+        if [ "$OS" == "ubuntu" ] || [ "$OS" == "debian" ]; then
+            sudo apt-get autoremove -y --purge
+            sudo apt-get autoclean
+        elif [ "$OS" == "centos" ]; then
+            sudo yum autoremove -y
+            sudo yum clean all
+        fi
+
+        # 查看是否有漏掉的docker依赖
+        echo -e "\033[1;33m正在查看是否有漏掉的docker依赖...\033[0m"
+        if [ "$OS" == "ubuntu" ] || [ "$OS" == "debian" ]; then
+            dpkg -l | grep docker
+        elif [ "$OS" == "centos" ]; then
+            yum list installed | grep docker
+        fi
+
+        # 卸载漏掉的依赖
+        if [ "$OS" == "ubuntu" ] || [ "$OS" == "debian" ]; then
+            sudo apt-get purge -y $(dpkg -l | grep docker | awk '{print $2}')
+        elif [ "$OS" == "centos" ]; then
+            sudo yum remove -y $(yum list installed | grep docker | awk '{print $1}')
+        fi
+
+        echo -e "\033[1;32mDocker已成功卸载并删除。\033[0m"
+        sleep 2
+        main_menu
+    else
+        echo -e "\033[1;32m操作已取消。\033[0m"
+        sleep 2
+        main_menu
+    fi
 }
 
 # 查看当前系统源
@@ -631,7 +784,8 @@ function docker_management_menu() {
     echo -e "\033[1;32mDocker管理\033[0m"
     echo "1. 安装Docker"
     echo "2. 查看当前Docker状态"
-    echo "3. 返回主菜单"
+    echo "3. 卸载Docker"
+    echo "4. 返回主菜单"
     read -p "请选择操作: " choice
 
     case $choice in
@@ -642,6 +796,9 @@ function docker_management_menu() {
             view_docker_status
             ;;
         3)
+            uninstall_docker
+            ;;
+        4)
             main_menu
             ;;
         *)
@@ -714,11 +871,12 @@ EOF
 # 显示脚本信息
 function show_script_info() {
     echo -e "\033[1;34m脚本作者：Master\033[0m"
-    echo -e "\033[1;34m版本：1.0\033[0m"
+    echo -e "\033[1;34m版本：2.0\033[0m"
     echo -e "\033[1;34m最后更新：2024-11-07\033[0m"
     echo ""
     echo -e "\033[1;34m该脚本旨在帮助用户优化系统、更换软件源、安装Docker和Node.js，并提供一键毁灭系统的危险操作。请谨慎使用。\033[0m"
     echo ""
+	sleep 3
 }
 
 # 运行主菜单
