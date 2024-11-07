@@ -218,134 +218,136 @@ function install_docker() {
     # 安装Docker Compose
     sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
     sudo chmod +x /usr/local/bin/docker-compose
+# 配置Docker镜像加速器
+echo -e "\033[1;34m请选择Docker镜像加速器：\033[0m"
+echo "1. Docker Proxy（推荐）"
+echo "2. 道客 DaoCloud"
+echo "3. AtomHub 可信镜像中心"
+echo "4. 阿里云（杭州）"
+echo "5. 阿里云（上海）"
+echo "6. 阿里云（青岛）"
+echo "7. 阿里云（北京）"
+echo "8. 阿里云（张家口）"
+echo "9. 阿里云（呼和浩特）"
+echo "10. 阿里云（乌兰察布）"
+echo "11. 阿里云（深圳）"
+echo "12. 阿里云（河源）"
+echo "13. 阿里云（广州）"
+echo "14. 阿里云（成都）"
+echo "15. 阿里云（香港）"
+echo "16. 阿里云（日本-东京）"
+echo "17. 阿里云（新加坡）"
+echo "18. 阿里云（澳大利亚-悉尼）"
+echo "19. 阿里云（马来西亚-吉隆坡）"
+echo "20. 阿里云（印度尼西亚-雅加达）"
+echo "21. 阿里云（印度-孟买）"
+echo "22. 阿里云（德国-法兰克福）"
+echo "23. 阿里云（英国-伦敦）"
+echo "24. 阿里云（美国西部-硅谷）"
+echo "25. 阿里云（美国东部-弗吉尼亚）"
+echo "26. 阿里云（阿联酋-迪拜）"
+echo "27. 腾讯云"
+echo "28. 谷歌云"
+echo "29. 官方 Docker Hub"
+read -p "请选择并输入你想使用的 Docker Registry 源 [ 1-29 ]：" docker_registry_choice
 
-    # 配置Docker镜像加速器
-    echo -e "\033[1;34m请选择Docker镜像加速器：\033[0m"
-    echo "1. Docker Proxy（推荐）"
-    echo "2. 道客 DaoCloud"
-    echo "3. AtomHub 可信镜像中心"
-    echo "4. 阿里云（杭州）"
-    echo "5. 阿里云（上海）"
-    echo "6. 阿里云（青岛）"
-    echo "7. 阿里云（北京）"
-    echo "8. 阿里云（张家口）"
-    echo "9. 阿里云（呼和浩特）"
-    echo "10. 阿里云（乌兰察布）"
-    echo "11. 阿里云（深圳）"
-    echo "12. 阿里云（河源）"
-    echo "13. 阿里云（广州）"
-    echo "14. 阿里云（成都）"
-    echo "15. 阿里云（香港）"
-    echo "16. 阿里云（日本-东京）"
-    echo "17. 阿里云（新加坡）"
-    echo "18. 阿里云（澳大利亚-悉尼）"
-    echo "19. 阿里云（马来西亚-吉隆坡）"
-    echo "20. 阿里云（印度尼西亚-雅加达）"
-    echo "21. 阿里云（印度-孟买）"
-    echo "22. 阿里云（德国-法兰克福）"
-    echo "23. 阿里云（英国-伦敦）"
-    echo "24. 阿里云（美国西部-硅谷）"
-    echo "25. 阿里云（美国东部-弗吉尼亚）"
-    echo "26. 阿里云（阿联酋-迪拜）"
-    echo "27. 腾讯云"
-    echo "28. 谷歌云"
-    echo "29. 官方 Docker Hub"
-    read -p "请选择并输入你想使用的 Docker Registry 源 [ 1-29 ]：" docker_registry_choice
-
-    case $docker_registry_choice in
-        1)
-            DOCKER_REGISTRY="https://dockerproxy.com"
-            ;;
-        2)
-            DOCKER_REGISTRY="https://f1361db2.m.daocloud.io"
-            ;;
-        3)
-            DOCKER_REGISTRY="https://registry.cn-hangzhou.aliyuncs.com"
-            ;;
-        4)
-            DOCKER_REGISTRY="https://registry.cn-shanghai.aliyuncs.com"
-            ;;
-        5)
-            DOCKER_REGISTRY="https://registry.cn-qingdao.aliyuncs.com"
-            ;;
-        6)
-            DOCKER_REGISTRY="https://registry.cn-beijing.aliyuncs.com"
-            ;;
-        7)
-            DOCKER_REGISTRY="https://registry.cn-zhangjiakou.aliyuncs.com"
-            ;;
-        8)
-            DOCKER_REGISTRY="https://registry.cn-huhehaote.aliyuncs.com"
-            ;;
-        9)
-            DOCKER_REGISTRY="https://registry.cn-wulanchabu.aliyuncs.com"
-            ;;
-        10)
-            DOCKER_REGISTRY="https://registry.cn-shenzhen.aliyuncs.com"
-            ;;
-        11)
-            DOCKER_REGISTRY="https://registry.cn-heyuan.aliyuncs.com"
-            ;;
-        12)
-            DOCKER_REGISTRY="https://registry.cn-guangzhou.aliyuncs.com"
-            ;;
-        13)
-            DOCKER_REGISTRY="https://registry.cn-chengdu.aliyuncs.com"
-            ;;
-        14)
-            DOCKER_REGISTRY="https://registry.cn-hongkong.aliyuncs.com"
-            ;;
-        15)
-            DOCKER_REGISTRY="https://registry.ap-northeast-1.aliyuncs.com"
-            ;;
-        16)
-            DOCKER_REGISTRY="https://registry.ap-southeast-1.aliyuncs.com"
-            ;;
-        17)
-            DOCKER_REGISTRY="https://registry.ap-southeast-2.aliyuncs.com"
-            ;;
-        18)
-            DOCKER_REGISTRY="https://registry.ap-southeast-3.aliyuncs.com"
-            ;;
-        19)
-            DOCKER_REGISTRY="https://registry.ap-southeast-5.aliyuncs.com"
-            ;;
-        20)
-            DOCKER_REGISTRY="https://registry.ap-south-1.aliyuncs.com"
-            ;;
-        21)
-            DOCKER_REGISTRY="https://registry.eu-central-1.aliyuncs.com"
-            ;;
-        22)
-            DOCKER_REGISTRY="https://registry.eu-west-1.aliyuncs.com"
-            ;;
-        23)
-            DOCKER_REGISTRY="https://registry.us-west-1.aliyuncs.com"
-            ;;
-        24)
-            DOCKER_REGISTRY="https://registry.us-east-1.aliyuncs.com"
-            ;;
-        25)
-            DOCKER_REGISTRY="https://registry.me-east-1.aliyuncs.com"
-            ;;
-        26)
-            DOCKER_REGISTRY="https://registry.ap-east-1.aliyuncs.com"
-            ;;
-        27)
-            DOCKER_REGISTRY="https://mirror.ccs.tencentyun.com"
-            ;;
-        28)
-            DOCKER_REGISTRY="https://mirror.gcr.io"
-            ;;
-        29)
-            DOCKER_REGISTRY="https://registry.docker.io"
-            ;;
-        *)
-            echo -e "\033[1;31m无效选择，请重新选择。\033[0m"
-            install_docker
-            return
-            ;;
-    esac
+case $docker_registry_choice in
+    1)
+        DOCKER_REGISTRY="https://dockerproxy.com"
+        ;;
+    2)
+        DOCKER_REGISTRY="https://f1361db2.m.daocloud.io"
+        ;;
+    3)
+        DOCKER_REGISTRY="https://hub.atomcloud.io"
+        ;;
+    4)
+        DOCKER_REGISTRY="https://registry.cn-hangzhou.aliyuncs.com"
+        ;;
+    5)
+        DOCKER_REGISTRY="https://registry.cn-shanghai.aliyuncs.com"
+        ;;
+    6)
+        DOCKER_REGISTRY="https://registry.cn-qingdao.aliyuncs.com"
+        ;;
+    7)
+        DOCKER_REGISTRY="https://registry.cn-beijing.aliyuncs.com"
+        ;;
+    8)
+        DOCKER_REGISTRY="https://registry.cn-zhangjiakou.aliyuncs.com"
+        ;;
+    9)
+        DOCKER_REGISTRY="https://registry.cn-huhehaote.aliyuncs.com"
+        ;;
+    10)
+        DOCKER_REGISTRY="https://registry.cn-wulanchabu.aliyuncs.com"
+        ;;
+    11)
+        DOCKER_REGISTRY="https://registry.cn-shenzhen.aliyuncs.com"
+        ;;
+    12)
+        DOCKER_REGISTRY="https://registry.cn-heyuan.aliyuncs.com"
+        ;;
+    13)
+        DOCKER_REGISTRY="https://registry.cn-guangzhou.aliyuncs.com"
+        ;;
+    14)
+        DOCKER_REGISTRY="https://registry.cn-chengdu.aliyuncs.com"
+        ;;
+    15)
+        DOCKER_REGISTRY="https://registry.cn-hongkong.aliyuncs.com"
+        ;;
+    16)
+        DOCKER_REGISTRY="https://registry.ap-northeast-1.aliyuncs.com"
+        ;;
+    17)
+        DOCKER_REGISTRY="https://registry.ap-southeast-1.aliyuncs.com"
+        ;;
+    18)
+        DOCKER_REGISTRY="https://registry.ap-southeast-2.aliyuncs.com"
+        ;;
+    19)
+        DOCKER_REGISTRY="https://registry.ap-southeast-3.aliyuncs.com"
+        ;;
+    20)
+        DOCKER_REGISTRY="https://registry.ap-southeast-5.aliyuncs.com"
+        ;;
+    21)
+        DOCKER_REGISTRY="https://registry.ap-south-1.aliyuncs.com"
+        ;;
+    22)
+        DOCKER_REGISTRY="https://registry.eu-central-1.aliyuncs.com"
+        ;;
+    23)
+        DOCKER_REGISTRY="https://registry.eu-west-1.aliyuncs.com"
+        ;;
+    24)
+        DOCKER_REGISTRY="https://registry.us-west-1.aliyuncs.com"
+        ;;
+    25)
+        DOCKER_REGISTRY="https://registry.us-east-1.aliyuncs.com"
+        ;;
+    26)
+        DOCKER_REGISTRY="https://registry.me-east-1.aliyuncs.com"
+        ;;
+    27)
+        DOCKER_REGISTRY="https://registry.ap-east-1.aliyuncs.com"
+        ;;
+    28)
+        DOCKER_REGISTRY="https://mirror.ccs.tencentyun.com"
+        ;;
+    29)
+        DOCKER_REGISTRY="https://mirror.gcr.io"
+        ;;
+    30)
+        DOCKER_REGISTRY="https://registry.docker.io"
+        ;;
+    *)
+        echo -e "\033[1;31m无效选择，请重新选择。\033[0m"
+        install_docker
+        return
+        ;;
+esac
 
     # 配置Docker镜像加速器
     sudo mkdir -p /etc/docker
